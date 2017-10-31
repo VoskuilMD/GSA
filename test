@@ -1,20 +1,5 @@
-**GSA pipeline**
+**GSA**
 =====
-author: MDV
-date: 20171031
-
-Load modules
-
-----
-```
-module load plink
-module load Python
-module load Perl
-module load opticall
-
-```
-
-**Convert Genomestudio output file into optiCall import file**
 
 
 
