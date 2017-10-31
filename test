@@ -3,42 +3,18 @@
 author: MDV
 date: 20171031
 
-Convert Genomestudio output file into optiCall import file
-
+Load modules
 
 ----
 ```
 module load plink
 module load Python
 module load Perl
-module load op
-library(fpc)  # Density based clustering dbscan
-library(gplots)  # Colorpanel
-library(scatterplot3d)  # 3D plotting
-library(monocle)
-library(tsne)  # Non-linear ordination
-library(pheatmap)
-library(MASS)
-library(cluster)
-library(mclust)
-library(flexmix)
-library(lattice)
-library(amap)
-library(RColorBrewer)
-library(locfit)
-library(Seurat)
-library(vioplot)
-library(dplyr) # Dataframe manipulation
-library(Matrix) # Sparse matrices
-library(useful) # Corner function
-library(scater) # Single Cell QC
-library(scde) # Differential Expression
-library(biomaRt)
-library(org.Hs.eg.db) # Gene name manipulation
-library(ggplot2)
-library(tidyr)
-library(devtools)
-library(biomaRt)
+module load opticall
+
 ```
 
-**create new seurat (v2.0) object of raw data file + QC**
+**Convert Genomestudio output file into optiCall import file**
+
+
+
