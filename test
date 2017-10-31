@@ -1,0 +1,25 @@
+# Author: Michiel Voskuil
+
+# Date: 2017/10/31
+
+1. Load tools in HPC environment
+--------------------------------
+
+```
+module load plink
+module load opticall
+module load Perl
+module load Python
+```
+
+2. Convert GS output into optiCall input file
+--------------------------------
+
+IDAT files are read by GS and converted into normalised intensities per variant. We use opticall for the genotype calling so we first need to convert the file.
+
+```
+python GenomeStudio_2_opticall_v3.py my_report.txt 
+```
+
+
+** 
