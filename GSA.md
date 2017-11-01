@@ -289,7 +289,7 @@ To assess relatedness and population stratification, the Ricopili pipeline only 
 
 Ricopili then prunes SNPs to ensure that there was little linkage disequilibrium between SNPs (R2 < 0.2).
 
-	- LD - R2 < .2, 200 SNPs window: plink --indep-pairwise 200 100 0.2 ([Plink-LD-prune](http://pngu.mgh.harvard.edu/~purcell/plink/summary.shtml#prune))
+	- LD - R2 < .2, 200 SNPs window: plink --indep-pairwise 200 100 0.2
 	- repeat LD pruning with resulting LD pruned dataset
 	- if still over 100K SNPs (rare) prune randomly
 
