@@ -2,31 +2,18 @@
 
 # Date: 2017/11/07
 
-Variables:
-pwd=[base-folder with final report]
-name=[name of this run]
-input=[final report table]
-s=[in final report: column containing snps name]
-a=[in final report: column containing allele, p.e [A/G]]
-c=[in final report: column containing snp position]
-x=[in final report: column containing chromosome]
-A=[in final report: column containing illumina norm. intensity for allele 1]
-B=[in final report: column containing illumina norm. intensity for allele 2]
-
 1.Load tools and set variables for SLURM environment / Calculon cluster UMCG
 -------------------------------------------------------------------------
 
 ```
 #!/bin/bash
-#SBATCH --job-name=$name
-#SBATCH --output=$name.out
-#SBATCH --error=$name.err
+#SBATCH --job-name=GSA
+#SBATCH --output=GSA.out
+#SBATCH --error=GSA.err
 #SBATCH --time=40:00:00
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=70gb
 #SBATCH --nodes=1
-#SBATCH --open-mode=append
-#SBATCH --export=NONE
 #SBATCH --get-user-env=L
 
 module load plink
@@ -36,6 +23,68 @@ module load Python
 module load PerlPlus
 module load Java
 module load VCFtools
+
+#####Set environment variables here
+
+#Run directory in which input file is stored
+RUNDIR=/groups/umcg-weersma/tmp04/Michiel/testfolder
+
+#Name of input file [final report table from Illumina Genome Studio Software]
+input=GSA.final_report.txt
+
+#Final report: column with snp name
+s=1
+#Final report: column with allele, p.e. [A/G]
+a=23
+#Final report: column with snp position
+c=20
+#Final report: column with chromosome
+x=19
+#Final report: column with illumina norm. intensity for allele 1
+A=30
+#Final report: column with illumina norm. intensity for allele 2
+B=31
+```
+
+2. Convert GS output into optiCall input files per chromosome
+-------------------------------------------------------------------------
+
+```
+cd $RUNDIR
+mkdir $RUNDIR/opticall_input
+bash scripts/GS_to_OptiCall.sh -i $input -s $s -a $a -c $c -x $x -A $A -B $B
+for i in {1..22} {X,XY,Y,MT};
+	do mv chr_$i $RUNDIR/opticall_input;
+done
+```
+
+3. Use optiCall to call genotypes 
+-------------------------------------------------------------------------
+In order to call chromosomes seperately, which saves a lot of time, run this script seperately. 
+Make sure the [info](https://opticall.bitbucket.io/#info-option-desc) file for opticall is in your $RUNDIR/opticall_input directory. 
+
+
+```
+# Set you RUNDIR variable again
+RUNDIR=/groups/umcg-weersma/tmp04/Michiel/testfolder
+
+# Name of opticall info file
+info=[name]
+
+cd $RUNDIR
+mkdir $RUNDIR/opticall_output
+bash $RUNDIR/scripts/create_opticall_jobs.sh
+
+
+
+cd $RUNDIR/opticall_input
+mkdir $RUNDIR/opticall_output
+
+for i in {1..22
+$EBROOTOPTICALL/opticall' "-in chr_"$i" -info opticall_info_file_others.txt  -out ../opticall_output/chr_"$i"_others_opticall
+
+
+
 
 ```
 cd $pwd 
@@ -64,6 +113,12 @@ bash scripts/GS_to_OptiCall.sh -i $input -s $s -a $a -c $c -x $x -A $A -B $B
 In this example, we call AMC samples separately because their intensities differ from the other centers.
 
 ```
+
+
+
+
+
+
 bash create_opticall_scripts_AMC.sh 
 bash create_opticall_scripts_others.sh
 
