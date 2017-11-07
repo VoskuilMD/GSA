@@ -74,6 +74,10 @@ info=[name]
 cd $RUNDIR
 mkdir $RUNDIR/opticall_output
 bash $RUNDIR/scripts/create_opticall_jobs.sh
+```
+
+
+UNTIL HERE
 
 
 
