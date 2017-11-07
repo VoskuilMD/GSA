@@ -70,6 +70,7 @@ RUNDIR=/groups/umcg-weersma/tmp04/Michiel/testfolder
 
 # Name of opticall info file
 info=[name]
+#################### SEX is still missing for CODE DNA samples ################
 
 cd $RUNDIR
 mkdir $RUNDIR/opticall_output
