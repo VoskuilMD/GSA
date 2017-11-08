@@ -2,6 +2,20 @@
 
 # Date: 2017/11/07
 
+1a. Copy scripts to appropriate locations
+----
+```
+mkdir $RUNDIR/scripts
+```
+
+Make sure the following scripts are in $RUNDIR/scripts
+GS_to_OptiCall.sh
+
+Make sure the following scripts are in $RUNDIR
+set_opticall_variables.sh
+create_opticall_jobs.sh
+
+
 1.Load tools and set variables for SLURM environment / Calculon cluster UMCG
 -------------------------------------------------------------------------
 
@@ -27,7 +41,7 @@ module load VCFtools
 #####Set environment variables here
 
 #Run directory in which input file is stored
-RUNDIR=/groups/umcg-weersma/tmp04/Michiel/testfolder
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
 
 #Name of input file [final report table from Illumina Genome Studio Software]
 input=GSA.final_report.txt
@@ -62,44 +76,32 @@ done
 -------------------------------------------------------------------------
 In order to call chromosomes seperately, which saves a lot of time, run this script seperately. 
 Make sure the [info](https://opticall.bitbucket.io/#info-option-desc) file for opticall is in your $RUNDIR/opticall_input directory. 
-
+MANUALLY adjust the script "$RUNDIR/set_opticall_variables.sh to the appropriate input variables ($RUNDIR and $info).
 
 ```
-# Set you RUNDIR variable again
-RUNDIR=/groups/umcg-weersma/tmp04/Michiel/testfolder
-
-# Name of opticall info file
-info=[name]
-#################### SEX is still missing for CODE DNA samples ################
-
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
 cd $RUNDIR
 mkdir $RUNDIR/opticall_output
-bash $RUNDIR/scripts/create_opticall_jobs.sh
+bash set_opticall_variables.sh
+for i in {1..22} {X,Y,MT};
+	do
+	sbatch scripts/chr_"$i"_opticall.sh;
+	done
 ```
 
 
 UNTIL HERE
 
+#now remove all the slurm (in $RUNDIR) and remove the opticall scripts in ($RUNDIR/scripts)
+#we may also remove the opticall input folder contnet
 
 
-cd $RUNDIR/opticall_input
-mkdir $RUNDIR/opticall_output
-
-for i in {1..22
-$EBROOTOPTICALL/opticall' "-in chr_"$i" -info opticall_info_file_others.txt  -out ../opticall_output/chr_"$i"_others_opticall
+TO DO:
+3. Convert opticall output to plink and continue work
 
 
 
 
-```
-cd $pwd 
-mkdir ./opticall_input
-mkdir ./
-mkdir ./
-mkdir ./
-mkdir ./
-mkdir ./
-```
 
 2. Convert GS output into optiCall input file
 --------------------------------
