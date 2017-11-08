@@ -10,7 +10,7 @@ echo "#SBATCH --nodes 1" >> scripts/chr_"$i"_opticall.sh
 #echo "#SBATCH --export=NONE" >> scripts/chr_"$i"_opticall.sh
 echo "module load opticall" >> scripts/chr_"$i"_opticall.sh
 echo "cd" '$RUNDIR/opticall_input' >> scripts/chr_"$i"_opticall.sh
-echo '$EBROOTOPTICALL/opticall' "-in chr_"$i" -info $info  -out ../opticall_output/chr_"$i"" >> scripts/chr_"$i"_opticall.sh 
+echo '$EBROOTOPTICALL/opticall' "-in chr_"$i" -info" '$info' "-out ../opticall_output/chr_"$i"" >> scripts/chr_"$i"_opticall.sh 
 done
 
 # Create opticall jobs for chromosomes X,Y,MT
@@ -25,5 +25,5 @@ echo "#SBATCH --nodes 1" >> scripts/chr_"$i"_opticall.sh
 #echo "#SBATCH --export=NONE" >> scripts/chr_"$i"_opticall.sh
 echo "module load opticall" >> scripts/chr_"$i"_opticall.sh
 echo "cd" '$RUNDIR/opticall_input' >> scripts/chr_"$i"_opticall.sh
-echo '$EBROOTOPTICALL/opticall' "-in chr_"$i" -info $info  -out ../opticall_output/chr_"$i"" -"$i" >> scripts/chr_"$i"_opticall.sh 
+echo '$EBROOTOPTICALL/opticall' "-in chr_"$i" -info" '$info' "-out ../opticall_output/chr_"$i"" -"$i" >> scripts/chr_"$i"_opticall.sh 
 done
