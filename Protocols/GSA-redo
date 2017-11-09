@@ -5,12 +5,16 @@
 1a. Copy scripts to appropriate locations
 ----
 ```
+# Set run directory in which input file is stored
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
+
 mkdir $RUNDIR/scripts
 ```
 
 Make sure the following scripts are in $RUNDIR/scripts
 GS_to_OptiCall.sh
 OptiCall_to_plink.py
+HRC-1000G-check-bim.pl
 
 Make sure the following scripts are in $RUNDIR
 set_opticall_variables.sh
@@ -142,6 +146,9 @@ cat plink_files/chr_{{1..22},X,Y}.bim > plink_files/GSApreQC.bim
 # Add sex to .fam file. Your [sex.info] file should be stored in your $RUNDIR
 plink --bfile plink_files/GSApreQC --update-sex $sexinfo --make-bed --out plink_files/GSApreQC 
 
+# Make directory for pca
+mkdir $RUNDER/pca
+
 
 5. We make use of the Ricopili pipeline to run pre imputation QC and PCA on the Broad Cluster
 ---------------------------------------------------------------------------------------------
@@ -221,23 +228,24 @@ Follow instructions at [Ricopili preimputation-QC](https://sites.google.com/a/br
 RUNDIR=/broad/hptmp/mvoskuil/[your_RUNDIR]
 
 # Set name of your file
-name=[name_file]
+name=[name_your_project i.e. 'GSA']
 
 # Make output directory
 mkdir $RUNDIR/GSA_rp_out
 
 # Copy your BINARY plink files into this directory
-cp /home/unix/mvoskuil/GSApreQC.bed $RUNDIR/GSA_rp_out
-cp /home/unix/mvoskuil/GSApreQC.bim $RUNDIR/GSA_rp_out
-cp /home/unix/mvoskuil/GSApreQC.fam $RUNDIR/GSA_rp_out
+cp /home/unix/mvoskuil/GSApreQC.bed $RUNDIR/$name_rp_out
+cp /home/unix/mvoskuil/GSApreQC.bim $RUNDIR/$name_rp_out
+cp /home/unix/mvoskuil/GSApreQC.fam $RUNDIR/$name_rp_out
 
 #Run the following command to run the QC:
-preimp	--dis ibd --pop mix --out $name
+cd $RUNDIR/$name_rp_out
+preimp --dis ibd --pop mix --out $name
 ```
 
 When prompted, edit the text file ending in $name.names using a text editor such as emacs, vim or nano
 The number of lines in this file corresponds to the number of datasets in the working directory. Each line will have two columns where the second column is the root name of one PLINK file. 
-Modify the first column to a 4 letter identifier for the file (ex: location data was obtained from).
+Modify the first column to a 4 letter identifier for the file (ex: location data was obtained from. In here I use: 'PSIc').
 
 ```
 nano ibd.names
@@ -254,15 +262,10 @@ preimp	--dis ibd --pop mix --out $name
 -----------------------------------
 
 Look at the output files in the qc/ directory
-
 PLINK files with -qc extension will be in your directory for each file in disease.names.
-
 The naming of the files is disease_batch_popname_initials-qc.[bed,bim,fam], where disease is the 3 letter phenotype abbreviation specified by --dis, batch is the cohort identifier in disease.names, popname is the population name specified by --popname, and initials are the user's 2 letter initials specified in $HOME/ricopili.conf.
-    
 The file qc/disease_batch_popname_initials-qc.pdf.gz contains a summary of the qc that occurred for each batch including the parameters used.
-
 For a more detailed description of the output files, see here: [Ricopili preimp Output-Files](https://sites.google.com/a/broadinstitute.org/ricopili/preimputation-qc#TOC-Output-Files)
-
 
 8. Perform pre-imputation PCA to check for population stratification
 --------------------------------------------------------------------
@@ -277,49 +280,122 @@ To assess relatedness and population stratification, the Ricopili pipeline only 
 	- no MHC (6:25-35Mb)
 	- no Chr.8 inversion (8:7-13Mb)
 
-
 Ricopili then prunes SNPs to ensure that there was little linkage disequilibrium between SNPs (R2 < 0.2).
 
 	- LD - R2 < .2, 200 SNPs window: plink --indep-pairwise 200 100 0.2
 	- repeat LD pruning with resulting LD pruned dataset
 	- if still over 100K SNPs (rare) prune randomly
 
-
 The resulting SNPs are used to assess common ancestry and population with Eigenstrat
 
 
+```
+# Make directory for your output:
+mkdir $RUNDIR/pca_$name
+cd $RUNDIR/pca_$name
 
-Make directory for your output:
+# Copy (or link) your QC'ed files into this directory:
+ln -s $RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.* $RUNDIR/pca_$name
 
-```
-mkdir ./pca_[name]
-```
-
-Copy (or link) your QC'ed files into this directory:
-
-```
-ln -s ../bfile-qc.* ./pca_[name]
-```
-
-Run the following command to run the PCA script:
-```
-pcaer --out [output_name] [bfile1-qc].bim
-```
-
-If you want to run the PCA with multiple files, for example with 1000G references populations, run a command like this:
-```
-pcaer --out [output_name] [bfile1-qc].bim [bfile_ref_populations].bim 
+# Run the following command to run the PCA script
+pcaer --out $name-[ref] ibd_PSIc_mix_mv-qc.bim # optional: [bfile_ref_populations].bim 
 
 # Example for the Amsterdam (amca) cohort:
-pcaer --out amca-4pop-test ibd_amca_mix_mv-qc.bim pop_4pop_mix_SEQ.bim
+
+# Make sure you also have put the corresponding .fam and .bed files in the directory
+
+# pcaer --out amca-4pop-test ibd_amca_mix_mv-qc.bim pop_4pop_mix_SEQ.bim
 ```
 
-Make sure you also have put the corresponding .fam and .bed files in the directory
+
+8b. Perform pre-imputation PCA to check for population stratification: output
+-----------------------------------------------------------------------------
+
+Ricopili will output many files: a full decription is available here: [Ricopili PCA Output-Files](https://sites.google.com/a/broadinstitute.org/ricopili/pca#TOC-Output-Files)
+
+We will look at the following files, since we have done the PCA per center;
+
+	- PSIc-[ref].menv.mds.2ds.pdf
+	
+
+Visually inspect the plots and extract populations of interest.
+
+```
+# Example
+awk '{ if ($4 <= -0.019) print $1,$2 }' PSIc-[ref].menv.mds_cov > 1kg_european_samples.txt
+awk '{ if ($4 >= -0.0189 && $4 <= 0.005) print $1,$2 }' PSIc-[ref].menv.mds_cov > 1kg_admixed_samples.txt
+```
+Copy the files back to your local machine
+```
+scp mvoskuil@login:$RUNDIR/1kg_european_samples.txt /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo
+scp mvoskuil@login:$RUNDIR/1kg_admixed_samples.txt /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo
+```
+
+Now, first we have to remove the 1000G IDs from the text files. Do this with whatever program you like. Also possible with Excel. 
+
+Once removed the 1000G IDs from the .txt files, I'm left with files like this with contain GSA samples per ethnicity, per center:
+```
+# Example
+GSA_european_samples.txt
+GSA_admixed_samples.txt
+```
+
+Now we copy these files back to the HPC cluster
+
+```
+scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo/GSA_european_samples.txt lobby+calculon:$RUNDER/pca
+scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo/GSA_admixed_samples.txt lobby+calculon:$RUNDER/pca
+
+scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.bim lobby+calculon:$RUNDER/pca
+scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.bed lobby+calculon:$RUNDER/pca
+scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.fam lobby+calculon:$RUNDER/pca
+```
+
+
+9. Pre-imputation checking
+--------------------------
+
+We will 'clean' our data prior to imputation. All credits for this step go to Will Rayner: [#Checking](http://www.well.ox.ac.uk/~wrayner/tools/#Checking)
+
+From this step onwards we will only work on the HPC cluster.
+Make sure your have the script HRC-1000G-check-bim.pl in your $RUNDIR/scripts directory
+
+```
+module load plink
+
+# Set your RUNDIR and QC'ed file
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
+postQC=[your_post_qc_file]
+cd $RUNDIR/pca
+
+# Extract samples for QC'ed files based on ethnicity
+plink --bfile $RUNDIR/pca/$postQC --keep $RUNDIR/pca/1kg_european_samples.txt --make-bed --out GSA-european
+plink --bfile $RUNDIR/pca/$postQC --keep $RUNDIR/pca/1kg_admixed_samples.txt --make-bed --out GSA-admixed
+
+# Create imputation directory
+mkdir $RUNDIR/imputation
+
+# Compile frequency file necessary for the preimputation checking script
+ln -s $RUNDIR/pca/GSA-european.* $RUNDIR/imputation
+ln -s $RUNDIR/pca/GSA-admixed.* $RUNDIR/imputation
+cd $RUNDIR/imputation
+plink --bfile GSA-european --freq --out GSA-european
+plink --bfile GSA-admixed --freq --out GSA-admixed
+
+# Download HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz from http://www.haplotype-reference-consortium.org/site 
+# (Filesize ~640MB zipped and ~ 2.6GB unzipped)
+wget ftp://ngs.sanger.ac.uk/production/hrc/HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz
+gzip -d HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz 
+
+# Download script "HRC-1000G-check-bim.pl" developed by Will Rayner available at http://www.well.ox.ac.uk/~wrayner/tools/#Checking 
+wget http://www.well.ox.ac.uk/~wrayner/tools/HRC-1000G-check-bim-v4.2.7.zip
+unzip HRC-1000G-check-bim-v4.2.7.zip
+
+# Script requires approximately 20GB memory to run. Suggest to run with scheduler.
 
 
 
-
-
+```
 
 
 
@@ -338,334 +414,6 @@ UNTIL HERE
 
 
 
-
-
-
-
-
-5. We make use of the Ricopili pipeline to run pre imputation QC and PCA on the Broad Cluster
----------------------------------------------------------------------------------------------
-
-Transfer the files from the HPC cluster to Broad cluster
-```
-for i in {amca,vumc,mumc,lumc,umcg,umcn,umcu,emcr}; do scp -3 lobby+calculon:./per_center/"$i"/chr_1-22-XY_"$i".* mvoskuil@login:/home/unix/mvoskuil/plink_files; done
-```
-
-6. Configurate Ricopili on Broad Cluster
-----------------------------------------
-
-``` 
-ssh mvoskuil@login
-
-```
-
-First you have to install Ricopili on the Broad cluster. To do so, follow the detailed manual at [Ricopili installation](https://sites.google.com/a/broadinstitute.org/ricopili/installation) 
-
-For now consider Ricopili installed in mvoskuil@login:/home/unix/mvoskuil/rp_bin
-
-To run Ricopili you have to install PDF latex (TexLive). Unfortunately, this is too big to install in your home directory at the Broad cluster, so you have to install it in the hptmp folder. However, files in this folder will be deleted every 14 days.  
-
-Follow the instruction on the TexLive website: [TexLive](https://www.tug.org/texlive/) 
-
-```
-mkdir /broad/hptmp/mvoskuil/texlive_[month]
-cd /broad/hptmp/mvoskuil/texlive_[month]
-wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
-tar xvzf install-tl-unx.tar.gz
-cd install-tl-[yyyymmdd]/
-./install-tl
-# Enter command:
-D
-# Enter command:
-1
-# Enter path:
-/broad/hptmp/mvoskuil/texlive_[month]
-# Enter command:
-R
-# Enter command:
-I
-# TexLive will now start the installatio; depending on the connection this may over two hours
-
-
-```
-After installed, add it to your path:
-```
-#Example
-PATH=/broad/hptmp/mvoskuil/texlive_nov2017/bin/x86_64-linux:$PATH
-
-```
-
-Every time you login to the Broad cluster, configurate the pipeline:
-
-```
-# Use UGER job scheduler 
-use UGER
-
-# Add PDF Latex to your PATH
-PATH=/broad/hptmp/mvoskuil/texlive_nov2017/bin/x86_64-linux:$PATH
-
-# Configurate Ricopili
-./rp_config
-```
-
-7. Perform QC with Ricopili 
----------------------------
-
-Follow instructions at [Ricopili preimputation-QC](https://sites.google.com/a/broadinstitute.org/ricopili/preimputation-qc)
-
-Make directory for your output:
-
-```
-mkdir ./[name]_rp_out/
-```
-
-Copy your BINARY plink files into this directory:
-
-```
-cp my.input.bed [name]_rp_out/
-cp my.input.bim [name]_rp_out/
-cp my.input.fam [name]_rp_out/
-```
-
-Run the following command to run the QC:
-```
-preimp	--dis ibd --pop mix --out [name]
-```
-
---dis is a required option that must be a 3 letter abbreviation for your phenotype. In here, I use ibd, which stands for inflammatory bowel disease. 
-
---pop stands for the ancestry of the samples in your dataset. For example, "eur" stands for European. There's also "asn" for Asian, "aam" for African-American, "afr" for African, "his" for Hispanic. 
-* this is used only for naming conventions and will have no effect on genotypes / SNP selections. you are free to use any name, but it's helpful to restrict on these names here. if unclear use "mix".
-
---out is a required option that is the output name for the project (only used to identify this pipeline run in the log files and in the queue-jobs) I used the following abbrevations per center: amca, emcr, vumc, lumc, umcg, umcn, umcu, mumc.
-
-When prompted, edit the text file ending in *.names using a text editor such as emacs, vim or nano
-
-
-The number of lines in this file corresponds to the number of datasets in the working directory. Each line will have two columns where the second column is the root name of one PLINK file. Modify the first column to a 4 letter identifier for the file (ex: location data was obtained from).
- 
-
-```
-nano ibd.names
-``` 
- 
-Re-run the following command to run the QC:
-```
-preimp	--dis ibd --pop mix --out [name]
-```
-
-7b. Perform QC with Ricopili: output
------------------------------------
-
-Look at the output files in the qc/ directory
-
-PLINK files with -qc extension will be in your directory for each file in disease.names.
-
-The naming of the files is disease_batch_popname_initials-qc.[bed,bim,fam], where disease is the 3 letter phenotype abbreviation specified by --dis, batch is the cohort identifier in disease.names, popname is the population name specified by --popname, and initials are the user's 2 letter initials specified in $HOME/ricopili.conf.
-    
-The file qc/disease_batch_popname_initials-qc.pdf.gz contains a summary of the qc that occurred for each batch including the parameters used.
-
-For a more detailed description of the output files, see here: [Ricopili preimp Output-Files](https://sites.google.com/a/broadinstitute.org/ricopili/preimputation-qc#TOC-Output-Files)
-
-
-8. Perform pre-imputation PCA to check for population stratification
---------------------------------------------------------------------
-
-To assess relatedness and population stratification, the Ricopili pipeline only uses SNP passing the following filters:
-
-	- SNPs are found in all datasets
-	- MAF > 5%
-	- HWE > 1.0e-04
-	- MISSING RATE < 2%
-	- no AT/GC SNPs (Strand Ambiguous SNPs)
-	- no MHC (6:25-35Mb)
-	- no Chr.8 inversion (8:7-13Mb)
-
-
-Ricopili then prunes SNPs to ensure that there was little linkage disequilibrium between SNPs (R2 < 0.2).
-
-	- LD - R2 < .2, 200 SNPs window: plink --indep-pairwise 200 100 0.2
-	- repeat LD pruning with resulting LD pruned dataset
-	- if still over 100K SNPs (rare) prune randomly
-
-
-The resulting SNPs are used to assess common ancestry and population with Eigenstrat
-
-
-
-Make directory for your output:
-
-```
-mkdir ./pca_[name]
-```
-
-Copy (or link) your QC'ed files into this directory:
-
-```
-ln -s ../bfile-qc.* ./pca_[name]
-```
-
-Run the following command to run the PCA script:
-```
-pcaer --out [output_name] [bfile1-qc].bim
-```
-
-If you want to run the PCA with multiple files, for example with 1000G references populations, run a command like this:
-```
-pcaer --out [output_name] [bfile1-qc].bim [bfile_ref_populations].bim 
-
-# Example for the Amsterdam (amca) cohort:
-pcaer --out amca-4pop-test ibd_amca_mix_mv-qc.bim pop_4pop_mix_SEQ.bim
-```
-
-Make sure you also have put the corresponding .fam and .bed files in the directory
-
-
-8b. Perform pre-imputation PCA to check for population stratification: output
------------------------------------------------------------------------------
-
-Ricopili will output many files: a full decription is available here: [Ricopili PCA Output-Files](https://sites.google.com/a/broadinstitute.org/ricopili/pca#TOC-Output-Files)
-
-
-
-We will look at the following files, since we have done the PCA per center;
-
-	- amca-4pop-test.menv.mds.2ds.pdf
-	- emcr-4pop-test.menv.mds.2ds.pdf
-	- lumc-4pop-test.menv.mds.2ds.pdf
-	- mumc-4pop-test.menv.mds.2ds.pdf
-	- umcg-4pop-test.menv.mds.2ds.pdf
-	- umcn-4pop-test.menv.mds.2ds.pdf
-	- umcu-4pop-test.menv.mds.2ds.pdf
-	- vumc-4pop-test.menv.mds.2ds.pdf
-
-Visually inspect the plots and extract populations of interest.
-
-```
-# amca
-awk '{ if ($4 <= -0.019) print $1,$2 }' amca-4pop-test.menv.mds_cov > amca-1kg_european_samples.txt
-awk '{ if ($4 >= -0.0189 && $4 <= 0.005) print $1,$2 }' amca-4pop-test.menv.mds_cov > amca-1kg_admixed_samples.txt
-
-#emcr
-awk '{ if ($4 <= -0.018) print $1,$2 }' emcr-4pop-test.menv.mds_cov > emcr-1kg_european_samples.txt
-awk '{ if ($4 >= -0.0179 && $4 <= 0.01 ) print $1,$2 }' emcr-4pop-test.menv.mds_cov > emcr-1kg_admixed_samples.txt
-
-#lumc
-awk '{ if ($4 <= -0.016 && $5 >= 0.00) print $1,$2 }' lumc-4pop-test.menv.mds_cov > lumc-1kg_european_samples.txt
-awk '{ if ($4 >= -0.0159 && $4 <= 0.005) print $1,$2 }' lumc-4pop-test.menv.mds_cov > lumc-1kg_admixed_samples.txt
-
-#mumc
-awk '{ if ($4 <= -0.01) print $1,$2 }' mumc-4pop-test.menv.mds_cov > mumc-1kg_european_samples.txt
-awk '{ if ($4 >= -0.009 && $4 <= 0.01) print $1,$2 }' mumc-4pop-test.menv.mds_cov > mumc-1kg_admixed_samples.txt
-
-#umcg
-awk '{ if ($4 <= -0.004) print $1,$2 }' umcg-4pop-test.menv.mds_cov > umcg-1kg_european_samples.txt
-awk '{ if ($4 >= -0.003 && $4 <= 0.01) print $1,$2 }' umcg-4pop-test.menv.mds_cov > umcg-1kg_admixed_samples.txt
-
-#umcn
-awk '{ if ($4 <= -0.015) print $1,$2 }' umcn-4pop-test.menv.mds_cov > umcn-1kg_european_samples.txt
-awk '{ if ($4 >= -0.0149 && $4 <= 0.01) print $1,$2 }' umcn-4pop-test.menv.mds_cov > umcn-1kg_admixed_samples.txt
-
-#umcu
-awk '{ if ($4 <= -0.011) print $1,$2 }' umcu-4pop-test.menv.mds_cov > umcu-1kg_european_samples.txt
-awk '{ if ($4 >= -0.010 && $4 <= 0.00) print $1,$2 }' umcu-4pop-test.menv.mds_cov > umcu-1kg_admixed_samples.txt
-
-#vumc
-awk '{ if ($4 <= -0.017) print $1,$2 }' vumc-4pop-test.menv.mds_cov > vumc-1kg_european_samples.txt
-awk '{ if ($4 >= -0.0169 && $4 <= 0.005) print $1,$2 }' vumc-4pop-test.menv.mds_cov > vumc-1kg_admixed_samples.txt
-```
-
-
-Copy to local machine:
-```
-for i in {amca,vumc,lumc,emcr,mumc,umcn,umcu,umcg};
-do
-scp lobby+calculon:/groups/umcg-weersma/tmp04/Michiel/GSA/pca/"$i"/"$i"-1kg_european_samples.txt /Users/michielvoskuil/Documents/Werk/Promotie/GSA/IDAT_pca
-scp lobby+calculon:/groups/umcg-weersma/tmp04/Michiel/GSA/pca/"$i"/"$i"-1kg_admixed_samples.txt /Users/michielvoskuil/Documents/Werk/Promotie/GSA/IDAT_pca;
-done
-```
-
-Now, first we have to remove the 1000G IDs from the text files. Do this with whatever program you like. Also possible with Excel. 
-
-
-Once removed the 1000G IDs from the .txt files, I'm left with files like this with contain GSA samples per ethnicity, per center:
-```
-# Example
-amca_european_samples.txt
-amca_admixed_samples.txt
-```
-Combine all samples into text file per ethnicity:
-
-```
-# European samples:
-cat amca_european_samples.txt emcr_european_samples.txt lumc_european_samples.txt mumc_european_samples.txt umcn_european_samples.txt umcu_european_samples.txt vumc_european_samples.txt umcg_european_samples.txt > all_european_samples_post_qc.txt
-
-#Admixed samples:
-cat amca_admixed_samples.txt emcr_admixed_samples.txt lumc_admixed_samples.txt mumc_admixed_samples.txt umcn_admixed_samples.txt umcu_admixed_samples.txt vumc_admixed_samples.txt umcg_admixed_samples.txt > all_admixed_samples_post_qc.txt
-```
-
-
-
-In the PSI IBD cohort we can notice:
-3534 European samples post QC
-154 Admixed samples post QC
-
-
-Copy back to HPC cluster: 
-
-```
-for i in {amca,vumc,lumc,emcr,mumc,umcn,umcu,umcg};
-do
-scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/IDAT_pca/"$i"_european_samples.txt lobby+calculon:/groups/umcg-weersma/tmp04/Michiel/GSA/pca/"$i"
-scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/IDAT_pca/"$i"_admixed_samples.txt lobby+calculon:/groups/umcg-weersma/tmp04/Michiel/GSA/pca/"$i";
-done
-```
-
-```
-scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/IDAT_pca/all_european_samples_post_qc.txt lobby+calculon:/groups/umcg-weersma/tmp04/Michiel/GSA/pca
-scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/IDAT_pca/all_admixed_samples_post_qc.txt lobby+calculon:/groups/umcg-weersma/tmp04/Michiel/GSA/pca
-```
-
-Now we can extract these samples from the PLINK binary files and merge all centers:
-
-```
-mkdir /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/
-cd /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/
-for i in {amca,vumc,lumc,emcr,mumc,umcn,umcu,umcg}; 
-do
-ln -s /groups/umcg-weersma/tmp04/Michiel/GSA/pre_imp_qc/ibd_"$i"_mix_mv-qc.bed .
-ln -s /groups/umcg-weersma/tmp04/Michiel/GSA/pre_imp_qc/ibd_"$i"_mix_mv-qc.bim .
-ln -s /groups/umcg-weersma/tmp04/Michiel/GSA/pre_imp_qc/ibd_"$i"_mix_mv-qc.fam .;
-done
-```
-```
-echo "ibd_vumc_mix_mv-qc" > merge.list
-echo "ibd_emcr_mix_mv-qc" >> merge.list
-echo "ibd_lumc_mix_mv-qc" >> merge.list
-echo "ibd_mumc_mix_mv-qc" >> merge.list
-echo "ibd_umcn_mix_mv-qc" >> merge.list
-echo "ibd_umcu_mix_mv-qc" >> merge.list
-echo "ibd_umcg_mix_mv-qc" >> merge.list
-```
-```
-cd /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/
-
-plink --bfile ibd_amca_mix_mv-qc --merge-list merge.list --keep ../all_european_samples_post_qc.txt --make-bed --out all_european-qc
-plink --bfile ibd_amca_mix_mv-qc --merge-list merge.list --keep ../all_admixed_samples_post_qc.txt --make-bed --out all_admixed-qc
-```
-
-9. Pre-imputation checking
---------------------------
-
-We will 'clean' our data prior to imputation. All credits for this step go to Will Rayner: [#Checking](http://www.well.ox.ac.uk/~wrayner/tools/#Checking)
-
-First we need to compile a frequency file:
-```
-for i in {european,admixed};
-do
-plink --bfile /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/all_"$i"-qc --freq --out all_"$i"-qc;
-done
-```
 
 Download  HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz from http://www.haplotype-reference-consortium.org/site 
 (Filesize ~640MB zipped and ~ 2.6GB unzipped)
