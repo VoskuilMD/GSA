@@ -10,6 +10,7 @@ mkdir $RUNDIR/scripts
 
 Make sure the following scripts are in $RUNDIR/scripts
 GS_to_OptiCall.sh
+OptiCall_to_plink.py
 
 Make sure the following scripts are in $RUNDIR
 set_opticall_variables.sh
@@ -21,9 +22,9 @@ create_opticall_jobs.sh
 
 ```
 #!/bin/bash
-#SBATCH --job-name=GSA
-#SBATCH --output=GSA.out
-#SBATCH --error=GSA.err
+#SBATCH --job-name=GSA.1
+#SBATCH --output=GSA.1.out
+#SBATCH --error=GSA.1.err
 #SBATCH --time=40:00:00
 #SBATCH --cpus-per-task=6
 #SBATCH --mem=70gb
@@ -90,147 +91,257 @@ for i in {1..22} {X,Y,MT};
 ```
 
 
-UNTIL HERE
-
-#now remove all the slurm (in $RUNDIR) and remove the opticall scripts in ($RUNDIR/scripts)
-#we may also remove the opticall input folder contnet
-
-
-TO DO:
-3. Convert opticall output to plink and continue work
-
-
-
-
-
-2. Convert GS output into optiCall input file
---------------------------------
-
-IDAT files are read by GS and converted into normalised intensities per variant. We use opticall for the genotype calling so we first need to convert the file.
-```
-bash scripts/GS_to_OptiCall.sh -i $input -s $s -a $a -c $c -x $x -A $A -B $B
-```
-
-#STOP STOP STOP
-
-
-3. Run optiCall to call genotypes
----------------
-
-In this example, we call AMC samples separately because their intensities differ from the other centers.
+4. Convert optiCall output into plink binary files
+-------------------------------------------------------------------------
+Mannualy set your $RUNDIR and $sexinfo
+Make sure your [sex.info] file is stored in your $RUNDIR
 
 ```
+#!/bin/bash
+#SBATCH --job-name=GSA.2
+#SBATCH --output=GSA.2.out
+#SBATCH --error=GSA.2.err
+#SBATCH --time=10:00:00
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=10gb
+#SBATCH --nodes=1
+#SBATCH --get-user-env=L
+
+module load plink
+module load Python
+
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
+sexinfo=$RUNDIR/[your_sex.info]
+
+cd $RUNDIR
+mkdir $RUNDIR/plink_files
+rm $RUNDIR/scripts/chr_*_opticall.sh
+rm $RUNDIR/opticall_input/chr_*
+rm $RUNDIR/slurm-*
+
+#Convert optiCall output into transposed plink files
+for i in {1..22} {X,Y}; 
+	do python scripts/OptiCall_to_plink.py opticall_output/chr_"$i".calls plink_files/chr_"$i".tped plink_files/chr_"$i".tfam "$i";
+	done
+	
+# Convert transposed plink files into binary plink files. To avoid heterozygous haploid warnings that involve the X chromosome we use --set-hh-missing, since we are sure at this stage there are no gender errors in our .fam file yet.
+for i in {1..22} {X,Y};
+	do plink --tfile plink_files/chr_"$i" --recode --make-bed --set-hh-missing --out plink_files/chr_"$i" --allow-no-sex;
+	done
+	
+# Remove large temporary files
+for i in {1..22} {X,Y,MT}; 
+	do rm plink_files/chr_"$i".tped plink_files/chr_"$i".tfam opticall_output/chr_"$i".calls opticall_output/chr_"$i".probs;
+	done
+	
+# Merge all chromosomes 1-22, X and Y
+cat plink_files/chr_X.fam > plink_files/GSApreQC.fam
+cat plink_files/chr_{{1..22},X,Y}.bim > plink_files/GSApreQC.bim
+(echo -en "\x6C\x1B\x01"; tail -qc +4 plink_files/chr{{1..22},X,Y}.bed) > plink_files/GSApreQC.bed
+
+# Add sex to .fam file. Your [sex.info] file should be stored in your $RUNDIR
+plink --bfile plink_files/GSApreQC --update-sex $sexinfo --make-bed --out plink_files/GSApreQC 
 
 
+5. We make use of the Ricopili pipeline to run pre imputation QC and PCA on the Broad Cluster
+---------------------------------------------------------------------------------------------
 
-
-
-
-bash create_opticall_scripts_AMC.sh 
-bash create_opticall_scripts_others.sh
-
-for i in {1..22}; do sbatch chr_"$i"_others.sh; done
-for i in {1..22}; do sbatch chr_"$i"_AMC.sh; done
-for i in {X,Y,MT,XY}; do sbatch chr_"$i"_others.sh; done
-for i in {X,Y,MT,XY}; do sbatch chr_"$i"_AMC.sh; done
+Transfer the files from the HPC cluster to Broad cluster
 ```
-WARNING MAY 24th. Chromosome MT fail to get called by optiCall. Reason currently unknown, but for now we will continue without MT SNPs anyway.
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
+for i in {bim,bed,fam};
+	do scp lobby+calculon:$RUNDIR/plink_files/GSApreQC."$i" mvoskuil@login:/home/unix/mvoskuil; 
+	done
+```
+
+6. Configurate Ricopili on Broad Cluster
+----------------------------------------
+
+``` 
+ssh mvoskuil@login
+
+```
+
+First you have to install Ricopili on the Broad cluster. To do so, follow the detailed manual at [Ricopili installation](https://sites.google.com/a/broadinstitute.org/ricopili/installation) 
+For now consider Ricopili installed in mvoskuil@login:/home/unix/mvoskuil/rp_bin
+To run Ricopili you have to install PDF latex (TexLive). Unfortunately, this is too big to install in your home directory at the Broad cluster, so you have to install it in the hptmp folder. However, files in this folder will be deleted every 14 days.  
+Follow the instruction on the TexLive website: [TexLive](https://www.tug.org/texlive/) 
+
+```
+date=[current_date_yyyymmdd]
+RUNDIR=/broad/hptmp/mvoskuil/[your_RUNDIR]
+mkdir $RUNDIR/texlive_$date
+cd $RUNDIR/texlive_$date
+wget http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+tar xvzf install-tl-unx.tar.gz
+cd install-tl-$date/
+./install-tl
+# Enter command:
+D
+# Enter command:
+1
+# Enter path:
+$RUNDIR/texlive_$date
+# Enter command:
+R
+# Enter command:
+I
+# TexLive will now start the installation; depending on the connection this may over two hours
 
 
+```
+After installed, add it to your path:
+```
+#Example
+PATH=$RUNDIR/texlive_$date/bin/x86_64-linux:$PATH
 
-4. Convert into binary plink files
+```
+
+Every time you login to the Broad cluster, configurate the pipeline:
+
+```
+# Use UGER job scheduler 
+use UGER
+
+# Add PDF Latex to your PATH
+PATH=$RUNDIR/texlive_$date/bin/x86_64-linux:$PATH
+
+# Configurate Ricopili
+/home/unix/mvoskuil/rp_bin/rp_config
+```
+
+7. Perform QC with Ricopili 
 ---------------------------
 
-optiCall will generate files like: chr_1_others_opticall.calls and chr_1_others_opticall.probs.
-We will use the .calls files to make .tped and .tfam PLINK files. The script "new_opticall_2_plink_with_position.py" does this automagically per chromosome.
+Make sure you have configured Ricopili according to step 6.
+Follow instructions at [Ricopili preimputation-QC](https://sites.google.com/a/broadinstitute.org/ricopili/preimputation-qc)
 
 ```
-for i in {amca,vumc,mumc,umcg,umcn,umcu,emcr,lumc}; do mkdir ./per_center/"$i"; done
+# Set run directory
+RUNDIR=/broad/hptmp/mvoskuil/[your_RUNDIR]
 
-for i in {1..22}; do python new_opticall_2_plink_with_position.py chr_"$i"_AMC_opticall.calls chr_"$i"_amca.tped chr_"$i"_amca.tfam "$i"; done
-for i in {X,Y,XY}; do python new_opticall_2_plink_with_position.py chr_"$i"_AMC_opticall.calls chr_"$i"_amca.tped chr_"$i"_amca.tfam "$i"; done
+# Set name of your file
+name=[name_file]
 
-```
-Transform .tped and .tfam files into binary plink files. 
+# Make output directory
+mkdir $RUNDIR/GSA_rp_out
 
-```
-center=umcu
-for i in {1..22} {X,XY,Y}; do plink --tfile chr_"$i"_others --make-bed --keep $center.ids --out per_center/$center/chr_"$i"_$center --allow-no-sex;
-done 
-center=umcn
-for i in {1..22} {X,XY,Y}; do plink --tfile chr_"$i"_others --make-bed --keep $center.ids --out per_center/$center/chr_"$i"_$center --allow-no-sex;
-done 
-center=vumc
-for i in {1..22} {X,XY,Y}; do plink --tfile chr_"$i"_others --make-bed --keep $center.ids --out per_center/$center/chr_"$i"_$center --allow-no-sex;
-done 
-center=lumc
-for i in {1..22} {X,XY,Y}; do plink --tfile chr_"$i"_others --make-bed --keep $center.ids --out per_center/$center/chr_"$i"_$center --allow-no-sex;
-done 
-center=mumc
-for i in {1..22} {X,XY,Y}; do plink --tfile chr_"$i"_others --make-bed --keep $center.ids --out per_center/$center/chr_"$i"_$center --allow-no-sex;
-done 
-center=emcr
-for i in {1..22} {X,XY,Y}; do plink --tfile chr_"$i"_others --make-bed --keep $center.ids --out per_center/$center/chr_"$i"_$center --allow-no-sex;
-done 
-center=umcg
-for i in {1..22} {X,XY,Y}; do plink --tfile chr_"$i"_others --make-bed --keep $center.ids --out per_center/$center/chr_"$i"_$center --allow-no-sex;
-done 
+# Copy your BINARY plink files into this directory
+cp /home/unix/mvoskuil/GSApreQC.bed $RUNDIR/GSA_rp_out
+cp /home/unix/mvoskuil/GSApreQC.bim $RUNDIR/GSA_rp_out
+cp /home/unix/mvoskuil/GSApreQC.fam $RUNDIR/GSA_rp_out
+
+#Run the following command to run the QC:
+preimp	--dis ibd --pop mix --out $name
 ```
 
-Merge all chromosomes into one binary plink file per center.
+When prompted, edit the text file ending in $name.names using a text editor such as emacs, vim or nano
+The number of lines in this file corresponds to the number of datasets in the working directory. Each line will have two columns where the second column is the root name of one PLINK file. 
+Modify the first column to a 4 letter identifier for the file (ex: location data was obtained from).
 
 ```
-for i in {amca,vumc,mumc,umcg,umcn,umcu,emcr,lumc};
-do
-cd /groups/umcg-weersma/tmp04/Michiel/GSA/plink/per_center/"$i"
-```
-```
-echo "chr_2_"$i"" > merge.list."$i"
-echo "chr_3_"$i"" >> merge.list."$i"
-echo "chr_4_"$i"" >> merge.list."$i"
-echo "chr_5_"$i"" >> merge.list."$i"
-echo "chr_6_"$i"" >> merge.list."$i"
-echo "chr_7_"$i"" >> merge.list."$i"
-echo "chr_8_"$i"" >> merge.list."$i"
-echo "chr_9_"$i"" >> merge.list."$i"
-echo "chr_10_"$i"" >> merge.list."$i"
-echo "chr_11_"$i"" >> merge.list."$i"
-echo "chr_12_"$i"" >> merge.list."$i"
-echo "chr_13_"$i"" >> merge.list."$i"
-echo "chr_14_"$i"" >> merge.list."$i"
-echo "chr_15_"$i"" >> merge.list."$i"
-echo "chr_16_"$i"" >> merge.list."$i"
-echo "chr_17_"$i"" >> merge.list."$i"
-echo "chr_18_"$i"" >> merge.list."$i"
-echo "chr_19_"$i"" >> merge.list."$i"
-echo "chr_20_"$i"" >> merge.list."$i"
-echo "chr_21_"$i"" >> merge.list."$i"
-echo "chr_22_"$i"" >> merge.list."$i"
-echo "chr_X_"$i"" >> merge.list."$i"
-echo "chr_XY_"$i"" >> merge.list."$i"
-echo "chr_Y_"$i"" >> merge.list."$i";
-done
-```
-```
-for i in {amca,vumc,mumc,umcg,umcn,umcu,emcr,lumc};
-do
-cd ./per_center/"$i"
-plink --bfile chr_1_"$i" --merge-list merge.list."$i" --make-bed --out chr_1-22-XY_"$i" --allow-no-sex;
-done
+nano ibd.names
 ```
 
-Add sex to .fam file. Sex info is stored in /groups/umcg-weersma/tmp04/Michiel/GSA/plink/sex.info
+
 ```
-for i in {amca,vumc,mumc,umcg,umcn,umcu,emcr,lumc};
-do
-cd /groups/umcg-weersma/tmp04/Michiel/GSA/plink/per_center/"$i"
-plink --bfile chr_1-22-XY_"$i" --update-sex ../../sex.info --out chr_1-22-XY_"$i"_sex --make-bed
-rm chr_1-22-XY_"$i".*
-mv chr_1-22-XY_"$i"_sex.bed chr_1-22-XY_"$i".bed
-mv chr_1-22-XY_"$i"_sex.fam chr_1-22-XY_"$i".fam
-mv chr_1-22-XY_"$i"_sex.bim chr_1-22-XY_"$i".bim;
-done
+# Re-run the following command to run the QC
+preimp	--dis ibd --pop mix --out $name
 ```
+
+
+7b. Perform QC with Ricopili: output
+-----------------------------------
+
+Look at the output files in the qc/ directory
+
+PLINK files with -qc extension will be in your directory for each file in disease.names.
+
+The naming of the files is disease_batch_popname_initials-qc.[bed,bim,fam], where disease is the 3 letter phenotype abbreviation specified by --dis, batch is the cohort identifier in disease.names, popname is the population name specified by --popname, and initials are the user's 2 letter initials specified in $HOME/ricopili.conf.
+    
+The file qc/disease_batch_popname_initials-qc.pdf.gz contains a summary of the qc that occurred for each batch including the parameters used.
+
+For a more detailed description of the output files, see here: [Ricopili preimp Output-Files](https://sites.google.com/a/broadinstitute.org/ricopili/preimputation-qc#TOC-Output-Files)
+
+
+8. Perform pre-imputation PCA to check for population stratification
+--------------------------------------------------------------------
+
+To assess relatedness and population stratification, the Ricopili pipeline only uses SNP passing the following filters:
+
+	- SNPs are found in all datasets
+	- MAF > 5%
+	- HWE > 1.0e-04
+	- MISSING RATE < 2%
+	- no AT/GC SNPs (Strand Ambiguous SNPs)
+	- no MHC (6:25-35Mb)
+	- no Chr.8 inversion (8:7-13Mb)
+
+
+Ricopili then prunes SNPs to ensure that there was little linkage disequilibrium between SNPs (R2 < 0.2).
+
+	- LD - R2 < .2, 200 SNPs window: plink --indep-pairwise 200 100 0.2
+	- repeat LD pruning with resulting LD pruned dataset
+	- if still over 100K SNPs (rare) prune randomly
+
+
+The resulting SNPs are used to assess common ancestry and population with Eigenstrat
+
+
+
+Make directory for your output:
+
+```
+mkdir ./pca_[name]
+```
+
+Copy (or link) your QC'ed files into this directory:
+
+```
+ln -s ../bfile-qc.* ./pca_[name]
+```
+
+Run the following command to run the PCA script:
+```
+pcaer --out [output_name] [bfile1-qc].bim
+```
+
+If you want to run the PCA with multiple files, for example with 1000G references populations, run a command like this:
+```
+pcaer --out [output_name] [bfile1-qc].bim [bfile_ref_populations].bim 
+
+# Example for the Amsterdam (amca) cohort:
+pcaer --out amca-4pop-test ibd_amca_mix_mv-qc.bim pop_4pop_mix_SEQ.bim
+```
+
+Make sure you also have put the corresponding .fam and .bed files in the directory
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+rm -r $RUNDIR/opticall_input etc.. 
+
+UNTIL HERE
+
+
+
+
+
+
+
 
 5. We make use of the Ricopili pipeline to run pre imputation QC and PCA on the Broad Cluster
 ---------------------------------------------------------------------------------------------
