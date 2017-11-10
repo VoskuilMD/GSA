@@ -6,8 +6,9 @@ echo "#SBATCH --job-name=HRC-check-bim."$i"" >> HRC-1000G-check-bim."$i".sh
 echo "#SBATCH --mem 25gb" >> HRC-1000G-check-bim."$i".sh
 echo "#SBATCH --time=10:00:00" >> HRC-1000G-check-bim."$i".sh
 echo "#SBATCH --nodes 1" >> HRC-1000G-check-bim."$i".sh
-echo "cd /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/check_files_HRC" >> HRC-1000G-check-bim."$i".sh
+echo ". set_HRC_variables.sh" >> HRC-1000G-check-bim."$i".sh
+echo "cd" '$RUNDIR/imputation' >> HRC-1000G-check-bim."$i".sh
 echo "module load R" >> HRC-1000G-check-bim."$i".sh
 echo "module load Perl" >> HRC-1000G-check-bim."$i".sh
-echo "perl HRC-1000G-check-bim.pl -b /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/all_"$i"-qc.bim  -f /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/check_files_HRC/all_"$i"-qc.frq  -r /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/check_files_HRC/HRC.r1-1.GRCh37.wgs.mac5.sites.tab -h" >> HRC-1000G-check-bim."$i".sh;
+echo "perl" '$RUNDIR/imputation/HRC-1000G-check-bim.pl' "-b" '$RUNDIR/imputation/GSA-'""$i".bim -f" '$RUNDIR/imputation/GSA-'""$i".frq -r" '$RUNDIR/imputation/HRC.r1-1.GRCh37.wgs.mac5.sites.tab'" -h" >> HRC-1000G-check-bim."$i".sh;
 done
