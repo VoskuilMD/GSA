@@ -526,3 +526,9 @@ do
 done
 ```
 
+9. Post imputation checking
+---------------------------
+```
+# Section will follow soon
+```
+
