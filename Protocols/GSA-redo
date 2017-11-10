@@ -288,8 +288,12 @@ Ricopili then prunes SNPs to ensure that there was little linkage disequilibrium
 
 The resulting SNPs are used to assess common ancestry and population with Eigenstrat
 
+Make sure you have your reference panel present in your $RUNDIR/pca directory. 
 
 ```
+# Set referencepanel
+reference=[ref panel p.e. pop_4pop_mix_SEQ or pop_euro_eur_SEQ]
+
 # Make directory for your output:
 mkdir $RUNDIR/pca_$name
 cd $RUNDIR/pca_$name
@@ -298,7 +302,7 @@ cd $RUNDIR/pca_$name
 ln -s $RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.* $RUNDIR/pca_$name
 
 # Run the following command to run the PCA script
-pcaer --out $name-[ref] ibd_PSIc_mix_mv-qc.bim # optional: [bfile_ref_populations].bim 
+pcaer --out $name ibd_PSIc_mix_mv-qc.bim $reference.bim 
 
 # Example for the Amsterdam (amca) cohort:
 
@@ -343,12 +347,12 @@ GSA_admixed_samples.txt
 Now we copy these files back to the HPC cluster
 
 ```
-scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo/GSA_european_samples.txt lobby+calculon:$RUNDER/pca
-scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo/GSA_admixed_samples.txt lobby+calculon:$RUNDER/pca
+scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo/GSA_european_samples.txt lobby+calculon:$RUNDIR/pca
+scp /Users/michielvoskuil/Documents/Werk/Promotie/GSA/redo/GSA_admixed_samples.txt lobby+calculon:$RUNDIR/pca
 
-scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.bim lobby+calculon:$RUNDER/pca
-scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.bed lobby+calculon:$RUNDER/pca
-scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.fam lobby+calculon:$RUNDER/pca
+scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.bim lobby+calculon:$RUNDIR/pca
+scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.bed lobby+calculon:$RUNDIR/pca
+scp -3 mvoskuil@login:$RUNDIR/rp_out_$name/ibd_PSIc_mix_mv-qc.fam lobby+calculon:$RUNDIR/pca
 ```
 
 
@@ -361,11 +365,17 @@ From this step onwards we will only work on the HPC cluster.
 Make sure your have the script HRC-1000G-check-bim.pl in your $RUNDIR/scripts directory
 
 ```
-module load plink
-
 # Set your RUNDIR and QC'ed file
 RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
 postQC=[your_post_qc_file]
+
+# Load plink
+module load plink
+
+cd $RUNDIR/scripts
+echo "export RUNDIR="$RUNDIR"" > set_HRC_variables.sh
+echo "export postQC="$postQC"" >> set_HRC_variables.sh
+
 cd $RUNDIR/pca
 
 # Extract samples for QC'ed files based on ethnicity
@@ -374,33 +384,123 @@ plink --bfile $RUNDIR/pca/$postQC --keep $RUNDIR/pca/1kg_admixed_samples.txt --m
 
 # Create imputation directory
 mkdir $RUNDIR/imputation
+mkdir $RUNDIR/imputation/european
+mkdir $RUNDIR/imputation/admixed
 
 # Compile frequency file necessary for the preimputation checking script
-ln -s $RUNDIR/pca/GSA-european.* $RUNDIR/imputation
-ln -s $RUNDIR/pca/GSA-admixed.* $RUNDIR/imputation
-cd $RUNDIR/imputation
-plink --bfile GSA-european --freq --out GSA-european
-plink --bfile GSA-admixed --freq --out GSA-admixed
+ln -s $RUNDIR/pca/GSA-european.* $RUNDIR/imputation/european
+ln -s $RUNDIR/pca/GSA-admixed.* $RUNDIR/imputation/admixed
+plink --bfile $RUNDIR/imputation/european/GSA-european --freq --out $RUNDIR/imputation/european/GSA-european
+plink --bfile $RUNDIR/imputation/admixed/GSA-admixed --freq --out $RUNDIR/imputation/admixed/GSA-admixed
 
 # Download HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz from http://www.haplotype-reference-consortium.org/site 
 # (Filesize ~673MB zipped and ~ 2.6GB unzipped)
+cd $RUNDIR/imputaton
 wget ftp://ngs.sanger.ac.uk/production/hrc/HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz
 gzip -d HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz 
 
 # Download script "HRC-1000G-check-bim.pl" developed by Will Rayner available at http://www.well.ox.ac.uk/~wrayner/tools/#Checking 
-
-# SO NOT NECESSARY TO KEEP IT IN YOUR SCRIPTS @@@@@@@@@@@@@@@@@@@@@@@
-
+cd $RUNDIR/scripts
 wget http://www.well.ox.ac.uk/~wrayner/tools/HRC-1000G-check-bim-v4.2.7.zip
 unzip HRC-1000G-check-bim-v4.2.7.zip
 
 # Script requires approximately 20GB memory to run. Suggest to run with scheduler.
+cd $RUNDIR/scripts
+bash $RUNDIR/scripts/create_HRC_jobs.sh
+sbatch $RUNDIR/scripts/HRC-1000G-check-bim.admixed.sh 
+sbatch $RUNDIR/scripts/HRC-1000G-check-bim.european.sh 
 
-
-
+# Depending on the size of your data, this script takes approximately 8 minutes to run.
+# The output will be a ready-to-use script "Run-plink.sh" to update your .bim files.
 ```
 
+9b. Pre-imputation checking: output
+--------------------------
 
+@@@@@@@@@@@@@@@@@@@@ CHECK what input and output the /european/Run-plink.sh generates. (also for admixed)
+
+```
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
+# Running the Run-plink.sh script will modify your .bim file according to the desired format for HRC imputation
+module load plink
+for i in {european,admixed};
+	do bash $RUNDIR/imputation/"$i"/Run-plink.sh;
+	done
+	
+# This will create updated post qc binary plink files per CHR (i.e. all_european-qc-updated-chr1)
+
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# We now need to remove the underscores in the sample IDs (.fam file), since plink merges FID and IID with underscore when converting to VCF
+for i in {european,admixed};
+do
+	for x in {1..23};
+	do
+	sed 's/_/-/g' all_"$i"-qc-updated-chr"$x".fam > all_"$i"-qc-updated-chr"$x"-pre-vcf_test.fam
+	done
+done
+
+cd /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/check_files_HRC
+for i in {european,admixed};
+do
+	for x in {1..23};
+	do
+	cp all_"$i"-qc-updated-chr"$x"-pre-vcf.fam ../imputation_ready
+	cp all_"$i"-qc-updated-chr"$x".bim ../imputation_ready/all_"$i"-qc-updated-chr"$x"-pre-vcf.bim
+	cp all_"$i"-qc-updated-chr"$x".bed ../imputation_ready/all_"$i"-qc-updated-chr"$x"-pre-vcf.bed
+	done
+done
+```
+
+Now we need to convert this to VCF prior to the upload to the Michigan Imputation Server
+
+```
+cd /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/imputation_ready
+
+# European
+for i in {1..23};
+do
+module load plink
+plink --bfile all_european-qc-updated-chr"$i"-pre-vcf --recode vcf --out all_european-qc-updated-chr"$i"
+rm all_european-qc-updated-chr"$i"-pre-vcf.*;
+done
+
+# Admixed
+for i in {1..23};
+do
+module load plink
+plink --bfile all_admixed-qc-updated-chr"$i"-pre-vcf --recode vcf --out all_admixed-qc-updated-chr"$i"
+rm all_admixed-qc-updated-chr"$i"-pre-vcf.*;
+done
+```
+
+Before we upload to the Michigan imputation server, we have to sort and zip the vcf files:
+```
+# This step takes approximately 5 minutes
+
+module load VCFtools
+for i in {european,admixed};
+do
+for x in {1..23};
+do
+vcf-sort all_"$i"-qc-updated-chr"$x".vcf | bgzip -c > all_"$i"-qc-updated-chr"$x".vcf.gz;
+done;
+done
+```
+
+Copy imputation ready files to HD as back-up
+```
+for i in {european,admixed};
+do
+	for x in {1..23};
+	do
+	scp lobby+calculon:/groups/umcg-weersma/tmp04/Michiel/GSA/imputation/imputation_ready/all_"$i"-qc-updated-chr"$x".vcf.gz /Volumes/Michiel/IDAT;
+	done;
+done
+```
+	
+	
+```
 
 
 
@@ -418,38 +518,10 @@ UNTIL HERE
 
 
 
-Download  HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz from http://www.haplotype-reference-consortium.org/site 
-(Filesize ~640MB zipped and ~ 2.6GB unzipped)
-```
-wget ftp://ngs.sanger.ac.uk/production/hrc/HRC.r1-1/HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz
-gzip -d HRC.r1-1.GRCh37.wgs.mac5.sites.tab.gz 
-```
-
-Download script "HRC-1000G-check-bim.pl" ('Tools') developed by Will Rayner at http://www.well.ox.ac.uk/~wrayner/tools/#Checking 
-```
-wget http://www.well.ox.ac.uk/~wrayner/tools/HRC-1000G-check-bim-v4.2.7.zip
-unzip HRC-1000G-check-bim-v4.2.7.zip
-```
-
-Script requires approximately 20GB memory to run. Suggest to run with scheduler.
-
-```
-# Usage: perl HRC-1000G-check-bim.pl -b <bim file> -f <Frequency file> -r <Reference panel> -g -p <population>
-
-# Below I have prepared a script which will create jobs. Just modify your input file names in the script "create_HRC_jobs.sh" ('Tools').
-
-bash create_HRC_jobs.sh
-
-
-for i in {european,admixed}; do
-sbatch HRC-1000G-check-bim."$i".sh;
-done 
-```
-
 9b. Pre-imputation checking: output
 --------------------------
 
-Depending on the size of your data, this script takes approximately 8 minutes to run.
+
 The output will be a ready-to-use script "Run-plink.sh" to update your .bim files.
 
 Running this script will modify your .bim file according to the desired format for HRC imputation
