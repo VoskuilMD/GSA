@@ -10,5 +10,5 @@ echo ". set_HRC_variables.sh" >> HRC-1000G-check-bim."$i".sh
 echo "cd" '$RUNDIR/imputation' >> HRC-1000G-check-bim."$i".sh
 echo "module load R" >> HRC-1000G-check-bim."$i".sh
 echo "module load Perl" >> HRC-1000G-check-bim."$i".sh
-echo "perl" '$RUNDIR/imputation/HRC-1000G-check-bim.pl' "-b" '$RUNDIR/imputation/GSA-'""$i".bim -f" '$RUNDIR/imputation/GSA-'""$i".frq -r" '$RUNDIR/imputation/HRC.r1-1.GRCh37.wgs.mac5.sites.tab'" -h" >> HRC-1000G-check-bim."$i".sh;
+echo "perl" '$RUNDIR/scripts/HRC-1000G-check-bim.pl' "-b" '$RUNDIR/imputation/GSA-'""$i".bim -f" '$RUNDIR/imputation/GSA-'""$i".frq -r" '$RUNDIR/imputation/HRC.r1-1.GRCh37.wgs.mac5.sites.tab'" -h" >> HRC-1000G-check-bim."$i".sh;
 done
