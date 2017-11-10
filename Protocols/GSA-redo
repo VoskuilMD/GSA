@@ -379,8 +379,8 @@ echo "export postQC="$postQC"" >> set_HRC_variables.sh
 cd $RUNDIR/pca
 
 # Extract samples for QC'ed files based on ethnicity
-plink --bfile $RUNDIR/pca/$postQC --keep $RUNDIR/pca/1kg_european_samples.txt --make-bed --out GSA-european
-plink --bfile $RUNDIR/pca/$postQC --keep $RUNDIR/pca/1kg_admixed_samples.txt --make-bed --out GSA-admixed
+plink --bfile $RUNDIR/pca/$postQC --keep $RUNDIR/pca/GSA_european_samples.txt --make-bed --out GSA-european
+plink --bfile $RUNDIR/pca/$postQC --keep $RUNDIR/pca/GSA_admixed_samples.txt --make-bed --out GSA-admixed
 
 # Create imputation directory
 mkdir $RUNDIR/imputation
