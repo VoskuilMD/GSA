@@ -32,9 +32,9 @@ Make sure the following scripts are in **$RUNDIR/scripts**
 #SBATCH --job-name=GSA.1
 #SBATCH --output=GSA.1.out
 #SBATCH --error=GSA.1.err
-#SBATCH --time=40:00:00
-#SBATCH --cpus-per-task=6
-#SBATCH --mem=70gb
+#SBATCH --time=24:00:00
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=10gb
 #SBATCH --nodes=1
 #SBATCH --get-user-env=L
 
