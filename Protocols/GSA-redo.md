@@ -28,6 +28,9 @@ Make sure the following scripts are in **$RUNDIR/scripts**
 -------------------------------------------------------------------------
 
 ```
+# This scripts take approximately 6,5 hours to run
+
+```
 #!/bin/bash
 #SBATCH --job-name=GSA.1
 #SBATCH --output=GSA.1.out
