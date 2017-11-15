@@ -12,7 +12,7 @@ echo "#SBATCH --nodes 1" >> cut_"$x"_chr"$i".sh
 echo ". set_cut_variables.sh" >> cut_"$x"_chr"$i".sh
 echo "module load R" >> cut_"$x"_chr"$i".sh
 echo "module load Perl" >> cut_"$x"_chr"$i".sh
-echo "cd" '$RUNDIR/'""$x"" >> cut_"$x"_chr"$i".sh
+echo "cd" '$RUNDIR/'""$x"/results" >> cut_"$x"_chr"$i".sh
 echo "perl vcfparse.pl -d" '$RUNDIR'"/imputation/"$x"/results/chr"$i" -o "$x"_chr"$i" -g" >> cut_"$x"_chr"$i".sh;
 done;
 done
