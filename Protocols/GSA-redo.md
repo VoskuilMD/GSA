@@ -1,6 +1,6 @@
 # Author: Michiel Voskuil 
 
-# Date: 2017/11/07
+# Date: 2017/11/15
 
 Set working directory and upload necessary scripts
 ---------------------------------------------------
@@ -21,6 +21,10 @@ Make sure the following scripts are in **$RUNDIR/scripts**
  HRC-1000G-check-bim.pl
  create_opticall_jobs.sh
  create_HRC_jobs.sh
+ create_cut_jobs.sh
+ create_IC_jobs.sh
+ vcfparse.pl
+ IC.pl
 ```
 
 
@@ -61,7 +65,7 @@ bash scripts/GS_to_OptiCall.sh -i $input -s $s -a $a -c $c -x $x -A $A -B $B
 Open a **new terminal window**  and log in to calculon
 ```
 screen -d
-# This lets the command run remotely. Once the job is **finished**, enter the following command in the same (2nd) terminal window
+# This lets the command run remotely. Once the job is finished, enter the following command in the same (2nd) terminal window
 screen -r
 ```
 
@@ -522,14 +526,92 @@ do
 	mkdir "$i"
 	for x in {1..23};
 	do
-	scp lobby+calculon:$RUNDIR/imputation/GSA-"$i"-updated-chr"$x".vcf.gz $localfolder/"$i";
+	scp lobby+calculon:$RUNDIR/imputation/"$i"/GSA-"$i"-updated-chr"$x".vcf.gz $localfolder/"$i";
 	done;
 done
 ```
 
-9. Post imputation checking
----------------------------
+9. Imputation
+
 ```
-# Section will follow soon
+# Simply upload your vcf files to the Michigan imputation server. Make sure you remember the password to unzip the imputed # files sent to you once the imputation has been completed
+```
+10. Post imputation checking
+---------------------------
+
+We will now check the imputation results, also via a script developed by Will Rayner: [IC](http://www.well.ox.ac.uk/~wrayner/tools/Post-Imputation.html) 
+
+```
+# Set your variables
+
+# Set your RUNDIR
+RUNDIR=/groups/umcg-weersma/tmp04/[your_RUNDIR]
+```
+
+```
+for i in {european,admixed};
+do
+mkdir $RUNDIR/imputation/"$i"/results
+
+# Use wget link from Michigan imputation server to download the files to appropriate folders
+# Use password in your e-mail to unzip the zipped files
+
+# The folders $RUNDIR/imputation/"$i"/results must now contain:
+# - chr_{1..22}.zip
+# - chr_{1..22}.log
+# - chr{1..22}.dose.vcf.gz
+# - chr{1..22}.dose.vcf.gz.tbi
+# - chr{1..22}.info.gz
+# - qcreport.html
+# - statistics.txt 
+```
+
+The current version requires only the first 8 columns from the VCF output file. 
+Make sure you have the 'vcfparse.pl' script in your $RUNDIR/scripts directory.
+
+```
+cd $RUNDIR/scripts
+echo "export RUNDIR="$RUNDIR"" > set_cut_variables.sh
+
+# This takes 6-7 hours per chromosome, so best do submit this as a job to the scheduler. 
+# The script takes all VCFs in a folder, so best to create separate folders per input (per CHR). 
+
+cd $RUNDIR/imputation/european/results
+for i in {1..22}; do mkdir chr"$i"; done
+for i in {1..22}; do mv chr"$i".dose.vcf.gz chr"$i"; done
+
+cd $RUNDIR/imputation/admixed/results
+for i in {1..22}; do mkdir chr"$i"; done
+for i in {1..22}; do mv chr"$i".dose.vcf.gz chr"$i"; done
+```
+```
+cd $RUNDIR/scripts
+bash $RUNDIR/scripts/create_cut_jobs.sh
+for i in {1..22}; do sbatch $RUNDIR/scripts/cut_admixed_chr"$i".sh; done
+for i in {1..22}; do sbatch $RUNDIR/scripts/cut_european_chr"$i".sh; done
+
+
+# Once the above scripts is finished, which takes about 6-7 hours for the ~3500 European samples, you should have files like  chr{1..22}.dose.vcf.cut.gz
+```
+
+With these 'cutted' vcf files we can do the actual post imputation check. We make use of a script developped by Will Rayner ic.pl ('Tools'). The script requires a few dependencies, please see [here](http://www.well.ox.ac.uk/~wrayner/tools/Post-Imputation.html)
+
+```
+# To run the IC script you should now move all chromosomes back into the same directory
+for i in {1..22}; do
+	mv $RUNDIR/imputation/admixed/results/chr"$i"/chr"$i".dose.vcf.cut.gz $RUNDIR/imputation/admixed/results;
+	done
+mkdir $RUNDIR/imputation/admixed/ICoutput
+for i in {1..22}; do
+	mv $RUNDIR/imputation/european/results/chr"$i"/chr"$i".dose.vcf.cut.gz $RUNDIR/imputation/european/results;
+	done	
+mkdir $RUNDIR/imputation/european/ICoutput
+
+# Now we can submit the jobs to visualise the imputation results
+for i in {european,admixed};
+	do sbatch IC_"$i".sh;
+	done
+
+# You may find the .txt, .jpg, and most informative the .html document in the ./ICoutput directory
 ```
 
