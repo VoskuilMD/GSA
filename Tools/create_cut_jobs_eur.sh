@@ -1,14 +1,19 @@
 #!/bin/bash
 
-for i in {1..22};
+for x in {european,admixed};
 do
-echo "#!/bin/bash" >> cut_eur_chr"$i".sh
-echo "#SBATCH --job-name=cut_eur_chr."$i"" >> cut_eur_chr"$i"
-echo "#SBATCH --mem 10gb" >> cut_eur_chr"$i"
-echo "#SBATCH --time=10:00:00" >> cut_eur_chr"$i"
-echo "#SBATCH --nodes 1" >> cut_eur_chr"$i"
-echo "cd /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/post_imputation" >> cut_eur_chr"$i"
-echo "module load R" >> cut_eur_chr"$i"
-echo "module load Perl" >> cut_eur_chr"$i"
-echo "perl vcfparse.pl -d /groups/umcg-weersma/tmp04/Michiel/GSA/imputation/european_to_HRC_EUR/chr"$i" -o european_to_HRC_EUR_chr"$i"  -g" >> cut_eur_chr"$i";
+  for i in {1..22};
+  do
+echo "#!/bin/bash" >> cut_"$x"_chr"$i".sh
+echo "#SBATCH --job-name=cut_eur_chr."$i"" >> cut_"$x"_chr"$i".sh
+echo "#SBATCH --mem 10gb" >> cut_"$x"_chr"$i".sh
+echo "#SBATCH --time=10:00:00" >> cut_"$x"_chr"$i".sh
+echo "#SBATCH --nodes 1" >> cut_"$x"_chr"$i".sh
+echo ". set_cut_variables.sh" >> cut_"$x"_chr"$i".sh
+echo "module load R" >> cut_"$x"_chr"$i".sh
+echo "module load Perl" >> cut_"$x"_chr"$i".sh
+echo "cd" '$RUNDIR/'""$x"" >> cut_"$x"_chr"$i".sh
+echo "perl vcfparse.pl -d" '$RUNDIR'"/imputation/"$x"/results/chr"$i" -o "$x"_chr"$i" -g" >> cut_"$x"_chr"$i".sh;
+done;
 done
+
