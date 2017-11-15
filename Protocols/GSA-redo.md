@@ -31,17 +31,6 @@ Make sure the following scripts are in **$RUNDIR/scripts**
 # This scripts take approximately 6,5 hours to run
 ```
 ```
-#!/bin/bash
-#SBATCH --job-name=GSA.1
-#SBATCH --output=GSA.1.out
-#SBATCH --error=GSA.1.err
-#SBATCH --time=24:00:00
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=50gb
-#SBATCH --nodes=1
-#SBATCH --get-user-env=L
-
-
 #####Set environment variables here
 
 #Run directory in which input file is stored
@@ -65,11 +54,18 @@ B=31
 
 cd $RUNDIR
 mkdir $RUNDIR/opticall_input
+screen 
 bash scripts/GS_to_OptiCall.sh -i $input -s $s -a $a -c $c -x $x -A $A -B $B
 ```
-
+```
+#Open a new terminal window and log in to calculon
+screen -d
+# This lets the command run remotely. Once the job is finished, enter the following command in the same (2nd) terminal window
+screen -r
+```
 
 ```
+# In your first terminal window:
 for i in {1..22} {X,XY,Y,MT};
 	do mv chr_$i $RUNDIR/opticall_input;
 done
@@ -211,7 +207,7 @@ D
 # Enter command:
 1
 # Enter path:
-$RUNDIRBROAD/texlive_$date
+# Manually enter the path $RUNDIRBROAD/texlive_$date, but don't use the environment variables. Just type the full path
 # Enter command:
 R
 # Enter command:
