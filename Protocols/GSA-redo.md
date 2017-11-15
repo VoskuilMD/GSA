@@ -37,12 +37,9 @@ Make sure the following scripts are in **$RUNDIR/scripts**
 #SBATCH --error=GSA.1.err
 #SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=10gb
+#SBATCH --mem=50gb
 #SBATCH --nodes=1
 #SBATCH --get-user-env=L
-
-
-module load Python
 
 
 #####Set environment variables here
@@ -69,6 +66,10 @@ B=31
 cd $RUNDIR
 mkdir $RUNDIR/opticall_input
 bash scripts/GS_to_OptiCall.sh -i $input -s $s -a $a -c $c -x $x -A $A -B $B
+```
+
+
+```
 for i in {1..22} {X,XY,Y,MT};
 	do mv chr_$i $RUNDIR/opticall_input;
 done
