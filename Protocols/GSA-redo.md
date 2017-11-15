@@ -57,10 +57,11 @@ mkdir $RUNDIR/opticall_input
 screen 
 bash scripts/GS_to_OptiCall.sh -i $input -s $s -a $a -c $c -x $x -A $A -B $B
 ```
+
+Open a **new terminal window**  and log in to calculon
 ```
-#Open a new terminal window and log in to calculon
 screen -d
-# This lets the command run remotely. Once the job is finished, enter the following command in the same (2nd) terminal window
+# This lets the command run remotely. Once the job is **finished**, enter the following command in the same (2nd) terminal window
 screen -r
 ```
 
