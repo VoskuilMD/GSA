@@ -2,7 +2,20 @@
 
 # Date: 2017/11/15
 
-Set working directory and upload necessary scripts
+1. Upload your final_report to the cluster
+---------------------------------------------------
+```
+rsync --partial --progress [your_final_report].txt lobby+calculon:[your_RUNDIR]
+
+# Especially when you're using WiFI for the upload, the connection may very well be interupted at some stage during the upload.
+# Use the command below to continue the upload from the point where it was interupted (rsync version < 3.0)
+rsync --partial --progress --append [your_final_report].txt lobby+calculon:[your_RUNDIR]
+
+#If you're using rsync version > 3.0 use:
+rsync --partial --progress --append-verify [your_final_report].txt lobby+calculon:[your_RUNDIR]
+```
+
+1. Set working directory and upload necessary scripts
 ---------------------------------------------------
 
 All scripts are available in the Github GSA/Tools directory.
