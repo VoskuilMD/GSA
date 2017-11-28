@@ -11,5 +11,5 @@ echo ". set_cut_variables.sh" >> IC_"$i".sh
 echo "cd" '$RUNDIR/scripts' >> IC_"$i".sh
 echo "module load PerlPlus" >> IC_"$i".sh
 echo "module load Java" >> IC_"$i".sh
-echo "perl IC.pl -d" '$RUNDIR'"/imputation/"$i"/results -r" '$RUNDIR'"/imputation/HRC.r1-1.GRCh37.wgs.mac5.sites.tab -h -o" '$RUNDIR'"/imputation/"$i"/results/ICoutput" >> IC_"$i".sh;
+echo "perl IC.pl -d" '$RUNDIR'"/imputation/"$i"/results/postimputation -r" '$RUNDIR'"/imputation/HRC.r1-1.GRCh37.wgs.mac5.sites.tab -h -o" '$RUNDIR'"/imputation/"$i"/results/ICoutput" >> IC_"$i".sh;
 done
