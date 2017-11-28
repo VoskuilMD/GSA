@@ -15,3 +15,4 @@ echo "module load Perl" >> cut_"$x"_chr"$i".sh
 echo "cd" '$RUNDIR/'""$x"/results" >> cut_"$x"_chr"$i".sh
 echo "perl vcfparse.pl -d" '$RUNDIR'"/imputation/"$x"/results/chr"$i" -o "$x"_chr"$i" -g" >> cut_"$x"_chr"$i".sh;
 done;
+done
