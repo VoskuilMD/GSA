@@ -5,7 +5,7 @@ do
 echo "#!/bin/bash" >> IC_"$i".sh
 echo "#SBATCH --job-name=IC_"$i"" >>IC_"$i".sh
 echo "#SBATCH --mem 50gb" >> IC_"$i".sh
-echo "#SBATCH --time=23:59:00" >> IC_"$i".sh
+echo "#SBATCH --time=9:59:00" >> IC_"$i".sh
 echo "#SBATCH --nodes 1" >> IC_"$i".sh
 echo ". set_cut_variables.sh" >> IC_"$i".sh
 echo "cd" '$RUNDIR/scripts' >> IC_"$i".sh
